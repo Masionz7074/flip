@@ -11,7 +11,12 @@
     <p>Enter the password to view the data.</p>
     <p class="warning"><strong>WARNING:</strong> This is a client-side password demonstration ONLY. The password and data are visible in the browser's developer tools and are NOT secure or a real database.</p>
 
-    <button id="unlockBtn">Unlock Data</button>
+    <div id="passwordInputArea">
+        <label for="passwordInput">Password:</label>
+        <input type="password" id="passwordInput" />
+        <button id="unlockBtn">Unlock Data</button>
+    </div>
+
 
     <div id="dataContainer" class="hidden">
         <h2>Stored Data:</h2>
