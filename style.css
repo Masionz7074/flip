@@ -27,6 +27,27 @@ p {
     font-size: 0.9em;
 }
 
+#passwordInputArea {
+    margin-bottom: 20px;
+    display: flex; /* Use flexbox for layout */
+    align-items: center; /* Vertically align items */
+    gap: 10px; /* Space between items */
+}
+
+#passwordInputArea label {
+    margin-bottom: 0; /* Reset margin from global label rule */
+    width: auto; /* Don't force label to 100% width */
+    font-weight: normal; /* Less bold for inline label */
+}
+
+#passwordInputArea input[type="password"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+
 button {
     padding: 10px 20px;
     background-color: #3498db;
@@ -35,7 +56,6 @@ button {
     border-radius: 4px;
     cursor: pointer;
     font-size: 1em;
-    margin-bottom: 20px;
     transition: background-color 0.3s ease;
 }
 
