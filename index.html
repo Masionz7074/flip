@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Data Store (Client-Side Demo)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Private Data Store</h1>
+    <p>Enter the password to view the data.</p>
+    <p class="warning"><strong>WARNING:</strong> This is a client-side password demonstration ONLY. The password and data are visible in the browser's developer tools and are NOT secure or a real database.</p>
+
+    <button id="unlockBtn">Unlock Data</button>
+
+    <div id="dataContainer" class="hidden">
+        <h2>Stored Data:</h2>
+        <pre id="dataOutput"></pre>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
