@@ -2,6 +2,24 @@ document.getElementById('unobfuscateBtn').addEventListener('click', unobfuscateL
 
 function unobfuscateLua() {
     const inputCode = document.getElementById('inputCode').value;
+    const outputCodeArea = document.getElementById('outputCode'); // Get the output textarea
+
+    // --- NEW CHECK: Detect potential bytecode ---
+    // Look for null bytes (\0) or their common escaped string representation (\\0)
+    // This is a strong indicator of serialized binary data/bytecode.
+    const bytecodePattern = /\\0|\x00/; // \\0 matches literal '\0', \x00 matches actual null byte character
+
+    if (bytecodePattern.test(inputCode)) {
+        outputCodeArea.value = "-- Error: This appears to be Lua bytecode, not source code.\n";
+        outputCodeArea.value += "-- This tool is designed for a specific source-code-level obfuscation pattern.\n";
+        outputCodeArea.value += "-- It cannot decompile or process compiled bytecode.";
+        console.log("Detected potential bytecode. Halting deobfuscation.");
+        return; // Stop the function execution here
+    }
+    // --- END NEW CHECK ---
+
+
+    // --- Existing Deobfuscation Logic (starts only if bytecode check passes) ---
     const lines = inputCode.split('\n');
     const outputLines = [];
 
@@ -307,5 +325,5 @@ function unobfuscateLua() {
     finalOutput += outputLines.join('\n');
 
 
-    document.getElementById('outputCode').value = finalOutput;
+    outputCodeArea.value = finalOutput;
 }
