@@ -1,328 +1,404 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SkillTree RPG</title>
-  <!-- React + ReactDOM + Babel CDN -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-router-dom@6/umd/react-router-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Minecraft Bedrock Blockly / Script Builder — Single File</title>
+  <meta name="description" content="Single-file Blockly-based editor to build Minecraft Bedrock scripts, generate manifest.json and export an addon ZIP. Responsive for mobile / tablet / desktop." />
   <style>
-    :root{
-      --bg:#0f1724; --card:#0b1220; --muted:#9aa7b2; --accent:#4fd1c5;
-      --glass: rgba(255,255,255,0.03);
+    :root{--accent:#4f46e5;--muted:#6b7280}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    .app{display:flex;flex-direction:column;height:100vh}
+    header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:linear-gradient(90deg,#0f172a00,#fff);border-bottom:1px solid #eee}
+    header h1{font-size:16px;margin:0}
+    .main{display:flex;flex:1;overflow:hidden}
+    /* sidebar */
+    .sidebar{width:320px;min-width:220px;max-width:420px;border-right:1px solid #eee;display:flex;flex-direction:column;padding:12px;gap:10px;overflow:auto}
+    .pane{flex:1;display:flex;flex-direction:column}
+    .tabs{display:flex;gap:6px}
+    .tab{padding:8px 10px;border-radius:8px;border:1px solid #eee;background:#fafafa;cursor:pointer;font-size:13px}
+    .tab.active{background:var(--accent);color:white;border-color:transparent}
+    label{font-size:13px;color:var(--muted)}
+    input,textarea,select{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd;font-size:14px}
+    .small-row{display:flex;gap:8px}
+    .small-row>input{flex:1}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer}
+    .btn.secondary{background:#e6e9ff;color:#0f172a}
+    /* workspace */
+    .workspace{flex:1;display:flex;flex-direction:column}
+    #blocklyDiv{flex:1;height:100%;min-height:320px}
+    .footer{display:flex;gap:8px;padding:8px;border-top:1px solid #eee}
+    .muted{color:var(--muted);font-size:13px}
+    /* responsive */
+    @media (max-width:900px){
+      .main{flex-direction:column}
+      .sidebar{width:100%;max-height:36vh;border-right:0;border-bottom:1px solid #eee}
+      header h1{font-size:15px}
     }
-    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;}
-    body{margin:0;background:linear-gradient(180deg,#061021,#081428);color:#e6eef6;min-height:100vh}
-    .app{max-width:1100px;margin:0 auto;padding:12px}
-    .topnav{display:flex;gap:12px;align-items:center;margin-bottom:8px}
-    .topnav a{color:var(--accent);text-decoration:none}
-    .auth-page, .home{padding:18px;background:var(--glass);border-radius:10px}
-    .auth-form{display:flex;flex-direction:column;gap:8px;max-width:320px}
-    .auth-form input{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-    .btn{background:var(--accent);color:#012; padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
-    .btn.small{padding:6px 8px;font-size:13px}
-    .err{color:#ff7b7b}
-    .dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .dash-main{display:flex;gap:12px;flex-direction:column}
-    .leftpanel{width:100%}
-    @media(min-width:900px){ .dash-main{flex-direction:row} .leftpanel{width:360px} .game-area{flex:1} }
-    .profile-card{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-bottom:10px}
-    .skilltree-card{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px}
-    .skill-svg-wrap{width:100%;height:220px;background:linear-gradient(180deg,#08192a,#071116);border-radius:8px;padding:8px}
-    .skill-svg-wrap svg{width:100%;height:100%}
-    .game-container{background:rgba(255,255,255,0.02);padding:12px;border-radius:8px}
-    .game-hud{display:flex;gap:12px;justify-content:space-between}
-    .enemy-card{margin-top:10px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01)}
-    .game-buttons{display:flex;gap:8px;margin-top:8px}
-    .game-log{margin-top:12px;max-height:180px;overflow:auto}
   </style>
+  <!-- Blocky CDN -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <!-- JSZip & FileSaver -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-<div id="root"></div>
-
-<script type="text/babel">
-
-const {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  Navigate,
-  useNavigate
-} = ReactRouterDOM;
-
-// Auth context
-const AuthContext = React.createContext();
-function useAuth(){ return React.useContext(AuthContext); }
-async function sha256(str){
-  const enc = new TextEncoder();
-  const buf = await crypto.subtle.digest('SHA-256', enc.encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function AuthProvider({children}){
-  const [user, setUser] = React.useState(null);
-  React.useEffect(()=>{
-    const saved = localStorage.getItem('currentUser');
-    if(saved) setUser(JSON.parse(saved));
-  },[]);
-  async function signup({username,password}){
-    const users = JSON.parse(localStorage.getItem('users')||'[]');
-    if(users.find(u=>u.username===username)) throw new Error('Username taken');
-    const pwHash = await sha256(password);
-    const newUser = { username, pwHash, createdAt: Date.now(), profile:{level:1,xp:0,stats:{hp:100,attack:10}}, skills:{} };
-    users.push(newUser);
-    localStorage.setItem('users',JSON.stringify(users));
-    localStorage.setItem('currentUser',JSON.stringify({username}));
-    setUser({username});
-  }
-  async function login({username,password}){
-    const users = JSON.parse(localStorage.getItem('users')||'[]');
-    const pwHash = await sha256(password);
-    const found = users.find(u=>u.username===username && u.pwHash===pwHash);
-    if(!found) throw new Error('Invalid credentials');
-    localStorage.setItem('currentUser',JSON.stringify({username}));
-    setUser({username});
-  }
-  function logout(){ localStorage.removeItem('currentUser'); setUser(null); }
-  function updateUserData(patch){
-    const users = JSON.parse(localStorage.getItem('users')||'[]');
-    const idx = users.findIndex(u=>u.username===user.username);
-    if(idx === -1) return;
-    users[idx] = {...users[idx], ...patch};
-    localStorage.setItem('users',JSON.stringify(users));
-  }
-  function getFullUser(){
-    const users = JSON.parse(localStorage.getItem('users')||'[]');
-    return users.find(u=>u.username===user?.username) || null;
-  }
-  return <AuthContext.Provider value={{user,signup,login,logout,updateUserData,getFullUser}}>{children}</AuthContext.Provider>;
-}
-
-// Components
-function ProtectedRoute({children}){
-  const { user } = useAuth();
-  if(!user) return <Navigate to="/login" replace />;
-  return children;
-}
-function Home(){
-  return <div className="home">
-    <h1>SkillTree RPG</h1>
-    <p>Mobile-friendly, offline, localStorage-based.</p>
-    <div style={{display:'flex',gap:10}}>
-      <Link to="/signup" className="btn">Sign up</Link>
-      <Link to="/login" className="btn">Log in</Link>
-    </div>
-  </div>;
-}
-function Signup(){
-  const { signup } = useAuth();
-  const [username,setUsername]=React.useState('');
-  const [pw,setPw]=React.useState('');
-  const [err,setErr]=React.useState('');
-  const nav = useNavigate();
-  async function submit(e){
-    e.preventDefault();
-    setErr('');
-    try{ await signup({username,password:pw}); nav('/dashboard'); }
-    catch(ex){ setErr(ex.message); }
-  }
-  return <div className="auth-page">
-    <h2>Create Account</h2>
-    <form onSubmit={submit} className="auth-form">
-      <input required value={username} onChange={e=>setUsername(e.target.value)} placeholder="username"/>
-      <input required value={pw} onChange={e=>setPw(e.target.value)} placeholder="password" type="password"/>
-      <button type="submit">Sign Up</button>
-      {err && <div className="err">{err}</div>}
-    </form>
-    <div className="foot">Already? <Link to="/login">Log in</Link></div>
-  </div>;
-}
-function Login(){
-  const { login } = useAuth();
-  const [username,setUsername]=React.useState('');
-  const [pw,setPw]=React.useState('');
-  const [err,setErr]=React.useState('');
-  const nav = useNavigate();
-  async function submit(e){
-    e.preventDefault();
-    setErr('');
-    try{ await login({username,password:pw}); nav('/dashboard'); }
-    catch(ex){ setErr(ex.message); }
-  }
-  return <div className="auth-page">
-    <h2>Log in</h2>
-    <form onSubmit={submit} className="auth-form">
-      <input required value={username} onChange={e=>setUsername(e.target.value)} placeholder="username"/>
-      <input required value={pw} onChange={e=>setPw(e.target.value)} placeholder="password" type="password"/>
-      <button type="submit">Log In</button>
-      {err && <div className="err">{err}</div>}
-    </form>
-    <div className="foot">New? <Link to="/signup">Create account</Link></div>
-  </div>;
-}
-function Dashboard(){
-  const { logout, getFullUser } = useAuth();
-  const profile = getFullUser()?.profile || {level:1,xp:0,stats:{hp:100,attack:10}};
-  return <div className="dashboard">
-    <header className="dash-header">
-      <h2>RPG Dashboard</h2>
-      <button onClick={logout} className="btn small">Logout</button>
-    </header>
-    <main className="dash-main">
-      <aside className="leftpanel">
-        <div className="profile-card">
-          <h3>{getFullUser()?.username}</h3>
-          <div>Level: {profile.level} XP: {profile.xp}</div>
-          <div>HP: {profile.stats.hp} Attack: {profile.stats.attack}</div>
-        </div>
-        <SkillTree/>
-      </aside>
-      <section className="game-area"><GameArea/></section>
-    </main>
-  </div>;
-}
-
-// Skill Tree
-const NODES = [
-  { id:'s1', x:20, y:10, title:'Strike', cost:1, prereq:[] },
-  { id:'s2', x:50, y:25, title:'Power Attack', cost:2, prereq:['s1'] },
-  { id:'s3', x:80, y:10, title:'Quick Step', cost:1, prereq:[] },
-  { id:'s4', x:50, y:55, title:'Defense', cost:1, prereq:['s1'] },
-  { id:'s5', x:50, y:80, title:'Berserk', cost:3, prereq:['s2','s4'] },
-];
-function SkillTree(){
-  const { getFullUser, updateUserData } = useAuth();
-  const [unlocked,setUnlocked]=React.useState({});
-  const username = getFullUser()?.username;
-  React.useEffect(()=>{
-    const saved = getFullUser()?.skills || {};
-    setUnlocked(saved);
-  },[username]);
-  function canUnlock(node){
-    if(unlocked[node.id]) return false;
-    return node.prereq.every(pid=>unlocked[pid]);
-  }
-  function unlock(node){
-    if(!canUnlock(node)) return;
-    const newUnlocked = {...unlocked, [node.id]:true};
-    setUnlocked(newUnlocked);
-    updateUserData({skills:newUnlocked});
-    const full = getFullUser();
-    const stats = {...full.profile.stats};
-    if(node.id==='s1') stats.attack += 3;
-    if(node.id==='s2') stats.attack += 6;
-    if(node.id==='s3') stats.hp += 10;
-    if(node.id==='s4') stats.hp += 20;
-    if(node.id==='s5'){ stats.attack += 12; stats.hp += 30; }
-    const profile = {...full.profile, stats};
-    updateUserData({profile});
-  }
-  return <div className="skilltree-card">
-    <h4>Skill Tree</h4>
-    <div className="skill-svg-wrap">
-      <svg viewBox="0 0 100 100">
-        {NODES.map(n=>n.prereq.map(pid=>{
-          const p = NODES.find(x=>x.id===pid);
-          if(!p) return null;
-          return <line key={pid+'-'+n.id} x1={p.x} y1={p.y} x2={n.x} y2={n.y} stroke="#777" strokeWidth="0.6"/>;
-        }))}
-        {NODES.map(n=>{
-          const isUnlocked = !!unlocked[n.id];
-          const clickable = canUnlock(n);
-          return <g key={n.id} transform={`translate(${n.x},${n.y})`} style={{cursor:clickable?'pointer':'default'}}
-            onClick={()=>clickable && unlock(n)}>
-            <circle r={4} fill={isUnlocked?'#66cc66':(clickable?'#ffcc00':'#ddd')} stroke="#333" strokeWidth="0.4"/>
-            <text x={6} y={2} fontSize="3">{n.title}</text>
-          </g>;
-        })}
-      </svg>
-    </div>
-  </div>;
-}
-
-// Game
-function GameArea(){
-  const { getFullUser, updateUserData } = useAuth();
-  const full = getFullUser();
-  const [log,setLog] = React.useState([]);
-  const [enemyHp,setEnemyHp]=React.useState(50);
-  if(!full) return null;
-  const stats = full.profile.stats;
-  function addLog(t){ setLog(l=>[t,...l].slice(0,20)); }
-  function attack(){
-    const dmg = Math.max(1, stats.attack + (Math.random()*5|0));
-    setEnemyHp(h=>{
-      const nh = Math.max(0,h-dmg);
-      addLog(`You hit for ${dmg}. enemy hp ${nh}`);
-      if(nh===0){
-        addLog('Enemy defeated! +20 XP');
-        const newProfile = {...full.profile, xp: full.profile.xp+20};
-        updateUserData({profile:newProfile});
-      }
-      return nh;
-    });
-  }
-  function heal(){
-    const amount = 10;
-    const newProfile = {...full.profile, stats:{...stats,hp:stats.hp+amount}};
-    updateUserData({profile:newProfile});
-    addLog(`You healed ${amount} HP`);
-  }
-  function resetEnemy(){
-    setEnemyHp(50+(Math.random()*30|0));
-    addLog('New enemy spawned');
-  }
-  return <div className="game-container">
-    <div className="game-hud">
-      <div><strong>Player</strong></div>
-      <div>HP: {stats.hp}</div>
-      <div>Attack: {stats.attack}</div>
-    </div>
-    <div className="enemy-card">
-      <h3>Enemy</h3>
-      <div className="enemy-hp">HP: {enemyHp}</div>
-      <div className="game-buttons">
-        <button onClick={attack} className="btn">Attack</button>
-        <button onClick={heal} className="btn">Heal</button>
-        <button onClick={resetEnemy} className="btn">New Enemy</button>
+  <div class="app">
+    <header>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24'><rect rx='5' width='24' height='24' fill='%234f46e5'/><text x='12' y='16' font-size='11' font-family='Inter' fill='white' text-anchor='middle'>MC</text></svg>" alt="logo" style="width:36px;height:36px;border-radius:8px;"/>
+      <div style="flex:1;display:flex;flex-direction:column">
+        <h1>Minecraft Bedrock Script Builder (Single file)</h1>
+        <div class="muted">Build scripts with blocks, generate manifest.json and export a behavior pack.</div>
       </div>
-    </div>
-    <div className="game-log">
-      <h4>Activity</h4>
-      <ul>{log.map((l,i)=><li key={i}>{l}</li>)}</ul>
-    </div>
-  </div>;
-}
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="downloadBtn" class="btn">Download Add-on</button>
+        <button id="exportCodeBtn" class="btn secondary">Export JS</button>
+      </div>
+    </header>
 
-// Main App
-function App(){
-  return <div className="app">
-    <nav className="topnav">
-      <Link to="/">Home</Link>
-      <Link to="/dashboard">Game</Link>
-    </nav>
-    <Routes>
-      <Route path="/" element={<Home/>}/>
-      <Route path="/login" element={<Login/>}/>
-      <Route path="/signup" element={<Signup/>}/>
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>}/>
-      <Route path="*" element={<div style={{padding:20}}>Not found</div>}/>
-    </Routes>
-  </div>;
-}
+    <div class="main">
+      <aside class="sidebar">
+        <div class="tabs">
+          <div class="tab active" data-tab="build">Build</div>
+          <div class="tab" data-tab="docs">Docs</div>
+          <div class="tab" data-tab="manifest">Manifest</div>
+        </div>
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App/>
-      </AuthProvider>
-    </BrowserRouter>
-  </React.StrictMode>
-);
-</script>
+        <div id="build" class="pane">
+          <div>
+            <label>Workspace name</label>
+            <input id="workspaceName" placeholder="MyAddon" value="MyBehaviorPack" />
+          </div>
+          <div>
+            <label>Script entry filename</label>
+            <input id="entryFile" value="scripts/main.js" />
+          </div>
+          <div>
+            <label>Code preview</label>
+            <textarea id="codePreview" rows="6" readonly style="font-family:monospace;white-space:pre-wrap"></textarea>
+          </div>
+
+          <div style="margin-top:6px">
+            <label>Quick actions</label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="runPreview" class="btn secondary">Generate Code</button>
+              <button id="clearWorkspace" class="btn secondary">Clear Blocks</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label>Examples</label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="exampleHello" class="btn">Hello Message</button>
+              <button id="exampleTick" class="btn">Periodic Message</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="docs" class="pane" style="display:none">
+          <div class="muted">Docs & references (quick links)</div>
+          <ul>
+            <li><a href="https://aka.ms/startwithmcscript" target="_blank">Microsoft: Getting started with Minecraft scripting</a></li>
+            <li><a href="https://wiki.bedrock.dev/scripting/game-tests" target="_blank">Bedrock Wiki: GameTests / scripting</a></li>
+            <li><a href="https://jaylydev.github.io/scriptapi-docs/" target="_blank">Script API references (jaylydev)</a></li>
+            <li><a href="https://coddyxbox.github.io/manifest_generator/" target="_blank">Manifest generator</a></li>
+          </ul>
+          <div style="margin-top:8px" class="muted">Tip: These pages were used to make the default manifest & example code.
+          </div>
+        </div>
+
+        <div id="manifest" class="pane" style="display:none">
+          <label>Manifest (generated)</label>
+          <div style="margin-top:8px" class="small-row">
+            <input id="manifestName" placeholder="Behavior Pack Name" value="My Behavior Pack" />
+            <input id="manifestDesc" placeholder="Description" value="Made with the Blockly editor" />
+          </div>
+          <div style="margin-top:8px" class="small-row">
+            <input id="manVerMajor" placeholder="1" value="1" />
+            <input id="manVerMinor" placeholder="0" value="0" />
+            <input id="manVerPatch" placeholder="0" value="0" />
+          </div>
+          <div style="margin-top:8px">
+            <label>Min engine version (optional)</label>
+            <input id="minEngine" placeholder="e.g. 1,20,30" value="1,20,30" />
+          </div>
+          <div style="margin-top:8px">
+            <label>Dependencies (module_name:version) — one per line</label>
+            <textarea id="dependencies" rows="3" placeholder='@minecraft/server:1.5.0'>@minecraft/server:1.5.0</textarea>
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button id="regenManifest" class="btn">Regenerate manifest</button>
+            <button id="downloadManifest" class="btn secondary">Download manifest.json</button>
+          </div>
+
+          <div style="margin-top:10px">
+            <label>Manifest JSON</label>
+            <textarea id="manifestPreview" rows="8" readonly style="font-family:monospace;white-space:pre-wrap"></textarea>
+          </div>
+        </div>
+
+      </aside>
+
+      <section class="workspace">
+        <div id="blocklyDiv"></div>
+        <div class="footer">
+          <div class="muted">Workspace: Blockly. Use the toolbox to drag blocks. Output will be generated as JavaScript compatible with Bedrock scripting APIs.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <xml id="toolbox" style="display:none">
+    <category name="Logic" colour="#5C81A6">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+    </category>
+    <category name="Loops" colour="#5CA65C">
+      <block type="controls_repeat_ext"><value name="TIMES"><shadow type="math_number"><field name="NUM">10</field></shadow></value></block>
+      <block type="controls_whileUntil"></block>
+    </category>
+    <category name="Functions" colour="#8A55D7">
+      <block type="procedures_defnoreturn"></block>
+      <block type="procedures_callnoreturn"></block>
+    </category>
+    <category name="Minecraft API" colour="#D67E00">
+      <block type="mc_import"/>
+      <block type="mc_send_message">
+        <value name="MSG"><shadow type="text"><field name="TEXT">Hello from Blockly!</field></shadow></value>
+      </block>
+      <block type="mc_on_tick"></block>
+    </category>
+    <category name="Text" colour="#5CA6A6">
+      <block type="text"></block>
+      <block type="text_join"></block>
+    </category>
+    <category name="Variables" custom="VARIABLE" colour="#A65C5C"></category>
+  </xml>
+
+  <script>
+    // --- Initialize Blockly workspace ---
+    const blocklyDiv = document.getElementById('blocklyDiv');
+    const workspace = Blockly.inject(blocklyDiv, {
+      toolbox: document.getElementById('toolbox'),
+      scrollbars: true,
+      trashcan: true,
+      zoom: {controls: true, wheel: true},
+      renderer: 'zelos'
+    });
+
+    // --- Define simple custom blocks for Minecraft scripting ---
+    Blockly.defineBlocksWithJsonArray([
+      {
+        "type": "mc_import",
+        "message0": "import %1 from %2",
+        "args0": [
+          {"type":"field_input","name":"NAMES","text":"{ world, system }"},
+          {"type":"field_input","name":"MODULE","text":"\"@minecraft/server\""}
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 230,
+        "tooltip": "Import classes from module",
+        "helpUrl": ""
+      },
+      {
+        "type": "mc_send_message",
+        "message0": "world.sendMessage %1",
+        "args0": [{"type":"input_value","name":"MSG"}],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 160
+      },
+      {
+        "type": "mc_on_tick",
+        "message0": "on tick do %1",
+        "args0": [{"type":"input_statement","name":"DO"}],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 20
+      }
+    ]);
+
+    // --- Generators to JS ---
+    Blockly.JavaScript['mc_import'] = function(block) {
+      const names = block.getFieldValue('NAMES') || '{ }';
+      const module = block.getFieldValue('MODULE') || '"@minecraft/server"';
+      const code = `import ${names} from ${module};\n`;
+      return code;
+    };
+
+    Blockly.JavaScript['mc_send_message'] = function(block) {
+      const msg = Blockly.JavaScript.valueToCode(block, 'MSG', Blockly.JavaScript.ORDER_ATOMIC) || '"Hello"';
+      return `world.sendMessage(${msg});\n`;
+    };
+
+    Blockly.JavaScript['mc_on_tick'] = function(block) {
+      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+      const funcName = 'mainTick';
+      const code = `function ${funcName}() {\n${statements}}\n system.run(${funcName});\n`;
+      return code;
+    };
+
+    // Use default generators for other blocks
+
+    // --- UI behavior ---
+    function updateCodePreview(){
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      document.getElementById('codePreview').value = code;
+      return code;
+    }
+
+    document.getElementById('runPreview').addEventListener('click', ()=>{
+      updateCodePreview();
+    });
+
+    document.getElementById('exportCodeBtn').addEventListener('click', ()=>{
+      const code = updateCodePreview();
+      const blob = new Blob([code], {type:'text/javascript'});
+      saveAs(blob, 'main.js');
+    });
+
+    document.getElementById('clearWorkspace').addEventListener('click', ()=>{
+      workspace.clear();
+      updateCodePreview();
+    });
+
+    document.getElementById('exampleHello').addEventListener('click', ()=>{
+      workspace.clear();
+      const xml = `<xml><block type="mc_import" x="10" y="10"><field name="NAMES">{ world }</field><field name="MODULE">\"@minecraft/server\"</field></block><block type="mc_send_message" x="10" y="120"><value name="MSG"><shadow type="text"><field name="TEXT">Hello from Blockly!</field></shadow></value></block></xml>`;
+      Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
+      updateCodePreview();
+    });
+
+    document.getElementById('exampleTick').addEventListener('click', ()=>{
+      workspace.clear();
+      const xml = `<xml><block type="mc_import" x="10" y="10"><field name="NAMES">{ world, system }</field><field name="MODULE">\"@minecraft/server\"</field></block><block type="mc_on_tick" x="10" y="120"><statement name="DO"><block type="controls_if"><value name="IF0"><block type="logic_compare"><field name="OP">EQ</field><value name="A"><block type="math_arithmetic"><field name="OP">MOD</field><value name="A"><block type="system_currentTick_proxy"></block></value><value name="B"><shadow type="math_number"><field name="NUM">200</field></shadow></value></block></value><value name="B"><shadow type="math_number"><field name="NUM">0</field></shadow></value></block></value><statement name="DO0"><block type="mc_send_message"><value name="MSG"><shadow type="text"><field name="TEXT">Tick message!</field></shadow></value></block></statement></block></statement></block></xml>`;
+      try{ Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);}catch(e){console.warn(e)}
+      updateCodePreview();
+    });
+
+    // small helper block used by exampleTick (proxy to current tick) - create a simple generator and block
+    Blockly.defineBlocksWithJsonArray([{type:'system_currentTick_proxy',message0:'system.currentTick',output:null,colour:65}]);
+    Blockly.JavaScript['system_currentTick_proxy']=function(){return ['system.currentTick',Blockly.JavaScript.ORDER_ATOMIC];};
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const tab = t.dataset.tab;
+      document.querySelectorAll('.pane').forEach(p=>p.style.display='none');
+      document.getElementById(tab).style.display='flex';
+    }));
+
+    // --- Manifest generation ---
+    function makeUUID(){
+      // Use crypto if available
+      if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      // fallback simple uuidv4
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c=='x'?r:(r&0x3|0x8);return v.toString(16);});
+    }
+
+    function parseVersionFields(){
+      const maj = parseInt(document.getElementById('manVerMajor').value)||1;
+      const min = parseInt(document.getElementById('manVerMinor').value)||0;
+      const pat = parseInt(document.getElementById('manVerPatch').value)||0;
+      return [maj,min,pat];
+    }
+
+    function generateManifest(){
+      const headerUuid = makeUUID();
+      const moduleUuid = makeUUID();
+      const name = document.getElementById('manifestName').value || 'My Behavior Pack';
+      const desc = document.getElementById('manifestDesc').value || '';
+      const version = parseVersionFields();
+      const minEngineRaw = document.getElementById('minEngine').value.trim();
+      const minEngine = minEngineRaw ? minEngineRaw.split(',').map(s=>parseInt(s.trim())||0) : undefined;
+      const depsText = document.getElementById('dependencies').value.trim();
+      const deps = depsText ? depsText.split('\n').map(l=>{ const [module,ver]=l.split(':'); return {module_name:module.trim(), version:ver?ver.trim():""}}) : [];
+
+      const modules = [
+        {
+          description: name + " data module",
+          type: "data",
+          uuid: moduleUuid,
+          version: [1,0,0]
+        },
+        {
+          description: "Script module",
+          type: "script",
+          uuid: makeUUID(),
+          version: [1,0,0],
+          entry: document.getElementById('entryFile').value || 'scripts/main.js'
+        }
+      ];
+
+      const manifest = {
+        format_version: 2,
+        header: {
+          description: desc,
+          name: name,
+          uuid: headerUuid,
+          version: version,
+          min_engine_version: minEngine
+        },
+        modules: modules,
+        dependencies: deps
+      };
+      return manifest;
+    }
+
+    function updateManifestPreview(){
+      const obj = generateManifest();
+      document.getElementById('manifestPreview').value = JSON.stringify(obj, null, 2);
+      return obj;
+    }
+
+    document.getElementById('regenManifest').addEventListener('click', ()=>{
+      updateManifestPreview();
+    });
+
+    document.getElementById('downloadManifest').addEventListener('click', ()=>{
+      const json = JSON.stringify(generateManifest(),null,2);
+      const blob = new Blob([json],{type:'application/json'});
+      saveAs(blob,'manifest.json');
+    });
+
+    // Auto-generate on load
+    updateManifestPreview();
+
+    // --- Create addon ZIP ---
+    async function createAddonZip(){
+      updateCodePreview();
+      const code = document.getElementById('codePreview').value || '';
+      const manifestObj = generateManifest();
+      const wpName = (document.getElementById('workspaceName').value||'MyBehaviorPack').replace(/[^a-zA-Z0-9_-]/g,'_');
+
+      const zip = new JSZip();
+      // behavior_pack folder
+      const bp = zip.folder(wpName);
+      bp.file('manifest.json', JSON.stringify(manifestObj, null, 2));
+      // scripts folder
+      bp.file(document.getElementById('entryFile').value || 'scripts/main.js', code);
+
+      // optional README
+      bp.file('README.txt', 'Generated with Minecraft Bedrock Blockly Editor (single file)');
+
+      const content = await zip.generateAsync({type:'blob'});
+      saveAs(content, `${wpName}_behavior_pack.zip`);
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      createAddonZip();
+    });
+
+    // Generate initial sample import so code preview isn't empty
+    setTimeout(()=>{
+      document.getElementById('exampleHello').click();
+    },300);
+
+    // --- End ---
+  </script>
 </body>
 </html>
